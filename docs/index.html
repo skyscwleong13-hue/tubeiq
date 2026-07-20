@@ -278,8 +278,15 @@ async function runQuery(ev) {
   const pat = document.getElementById("q-pat").value.trim();
   const status = document.getElementById("runstatus");
   const btn = document.getElementById("q-go");
-  if (!pat) { status.textContent =
-    "No token — use the GitHub link below instead, or paste a token once."; return false; }
+  if (!pat) {
+    status.innerHTML = '<b style="color:#e5905a">Needs a GitHub token to run from here</b> — ' +
+      'paste one above (one-time per device, steps below), or use ' +
+      `<a class="plain" href="https://github.com/${REPO}/actions/workflows/query.yml" ` +
+      'target="_blank" rel="noopener">the Run workflow page on GitHub</a> instead.';
+    document.querySelector("details").open = true;
+    document.getElementById("q-pat").focus();
+    return false;
+  }
   localStorage.setItem("tubeiq_pat", pat);
   const inputs = {
     command: document.getElementById("q-cmd").value,
