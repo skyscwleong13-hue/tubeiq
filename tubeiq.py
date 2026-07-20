@@ -141,21 +141,26 @@ def analyze_keyword(kw, auto_weight, max_auto):
     }
 
 
-def cmd_keywords(args):
-    print(f"fanning out autocomplete for '{args.seed}' ...", file=sys.stderr)
-    w = fanout(args.seed)
+def keywords_data(seed, top=8, log=lambda s: print(s, file=sys.stderr)):
+    log(f"fanning out autocomplete for '{seed}' ...")
+    w = fanout(seed)
     max_auto = max(w.values()) if w else 1
-    candidates = [args.seed] + list(w.keys())[:args.top]
+    candidates = [seed] + list(w.keys())[:top]
     results = []
     for kw in candidates:
-        print(f"  analyzing: {kw}", file=sys.stderr)
+        log(f"  analyzing: {kw}")
         try:
             r = analyze_keyword(kw, w.get(kw, max_auto), max_auto)
             if r:
                 results.append(r)
         except Exception as e:
-            print(f"  ! {kw}: {e}", file=sys.stderr)
+            log(f"  ! {kw}: {e}")
     results.sort(key=lambda r: -r["overall"])
+    return results
+
+
+def cmd_keywords(args):
+    results = keywords_data(args.seed, args.top)
 
     def human(res):
         table([[r["keyword"], r["overall"], r["demand"], r["competition"],
@@ -208,20 +213,20 @@ def channel_median(channel_id, exclude_id=None, cache={}):
     return med, len(views)
 
 
-def cmd_outliers(args):
-    print(f"searching '{args.query}' ({args.period}, by views) ...",
-          file=sys.stderr)
-    vids = yt.search(args.query, sort="views", period=args.period, limit=30)
+def outliers_data(query, period="month", n=10, min_views=10_000,
+                  log=lambda s: print(s, file=sys.stderr)):
+    log(f"searching '{query}' ({period}, by views) ...")
+    vids = yt.search(query, sort="views", period=period, limit=30)
     vids = [v for v in vids
-            if v["views"] and v["views"] >= args.min_views and v["channelId"]
+            if v["views"] and v["views"] >= min_views and v["channelId"]
             and (v["duration_s"] is None or v["duration_s"] > 62)]
     out = []
-    for v in vids[:args.n]:
-        print(f"  baseline for {v['channel']} ...", file=sys.stderr)
+    for v in vids[:n]:
+        log(f"  baseline for {v['channel']} ...")
         try:
             med, nvids = channel_median(v["channelId"], v["videoId"])
         except Exception as e:
-            print(f"  ! {v['channel']}: {e}", file=sys.stderr)
+            log(f"  ! {v['channel']}: {e}")
             continue
         if not med:
             continue
@@ -230,6 +235,11 @@ def cmd_outliers(args):
         v["multiplier"] = round(v["views"] / med, 1)
         out.append(v)
     out.sort(key=lambda v: -v["multiplier"])
+    return out
+
+
+def cmd_outliers(args):
+    out = outliers_data(args.query, args.period, args.n, args.min_views)
 
     def human(vs):
         table([[f'{v["multiplier"]}x', (v["title"] or "")[:56],
@@ -244,10 +254,10 @@ def cmd_outliers(args):
 
 # ---------------------------------------------------------------- channel
 
-def cmd_channel(args):
-    cid = yt.resolve_channel(args.channel)
+def channel_data(ref, n=30):
+    cid = yt.resolve_channel(ref)
     meta = yt.channel_meta(cid)
-    vids = yt.channel_videos(cid, limit=args.n)
+    vids = yt.channel_videos(cid, limit=n)
     longs = [v for v in vids
              if v["duration_s"] is None or v["duration_s"] > 62]
     views = [v["views"] for v in longs if v["views"] is not None]
@@ -259,8 +269,12 @@ def cmd_channel(args):
     for v in vids:
         v["multiplier"] = (round(v["views"] / med, 1)
                            if med and v["views"] is not None else None)
-    data = {"meta": meta, "median_views": int(med) if med else None,
+    return {"meta": meta, "median_views": int(med) if med else None,
             "uploads_per_week": cadence, "videos": vids}
+
+
+def cmd_channel(args):
+    data = channel_data(args.channel, args.n)
 
     def human(d):
         m = d["meta"]

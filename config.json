@@ -1,0 +1,6 @@
+{
+  "niches": ["cortisol", "metabolic health"],
+  "keyword_seeds": ["cortisol belly fat", "why you wake up at 3am"],
+  "tracked": ["@themetabologic", "@hubermanlab"],
+  "outliers": { "period": "month", "n": 8, "min_views": 20000 }
+}

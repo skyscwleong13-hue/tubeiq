@@ -1,0 +1,45 @@
+name: query
+on:
+  workflow_dispatch:
+    inputs:
+      command:
+        description: "what to run"
+        type: choice
+        required: true
+        options: [outliers, keywords, search, suggest, channel, title]
+      query:
+        description: "keyword / @handle / title text (use | between titles)"
+        required: true
+      period:
+        description: "time window (outliers/search)"
+        type: choice
+        default: month
+        options: [month, week, year, all]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: data
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install requests -q
+      - run: python cloud_query.py "${{ inputs.command }}" "${{ inputs.query }}" "${{ inputs.period }}"
+      - name: commit result
+        run: |
+          git config user.name "tubeiq-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add docs/data/ondemand.json
+          git diff --cached --quiet && exit 0
+          git commit -m "data: query ${{ inputs.command }}"
+          git pull --rebase origin main
+          git push

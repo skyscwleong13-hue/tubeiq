@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0f1115">
+<title>TubeIQ</title>
+<style>
+  :root {
+    --bg:#0f1115; --surface:#171a21; --surface2:#1e222c;
+    --ink:#e6e9ef; --ink2:#9aa3b2; --ink3:#6b7280;
+    --accent:#4da3ff; --line:#262b36; --good:#39c17e;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink);
+    font:15px/1.5 -apple-system,"Segoe UI",Roboto,sans-serif; }
+  .wrap { max-width:900px; margin:0 auto; padding:16px 14px 60px; }
+  header { display:flex; align-items:baseline; gap:10px; margin-bottom:14px; }
+  h1 { font-size:20px; margin:0; letter-spacing:.3px; }
+  #updated { color:var(--ink3); font-size:12.5px; }
+  nav { display:flex; gap:6px; margin-bottom:16px; flex-wrap:wrap; }
+  nav button { background:var(--surface); color:var(--ink2); border:1px solid var(--line);
+    border-radius:8px; padding:7px 14px; font-size:14px; cursor:pointer; }
+  nav button.on { background:var(--surface2); color:var(--ink); border-color:var(--accent); }
+  h2 { font-size:15px; color:var(--ink2); font-weight:600; margin:22px 0 8px;
+    text-transform:uppercase; letter-spacing:.6px; }
+  .tablewrap { overflow-x:auto; border:1px solid var(--line); border-radius:10px;
+    background:var(--surface); }
+  table { border-collapse:collapse; width:100%; font-size:13.5px; min-width:560px; }
+  th { text-align:left; color:var(--ink3); font-weight:600; font-size:12px;
+    text-transform:uppercase; letter-spacing:.4px; padding:9px 10px;
+    border-bottom:1px solid var(--line); white-space:nowrap; }
+  td { padding:8px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+  tr:last-child td { border-bottom:none; }
+  td a { color:var(--ink); text-decoration:none; }
+  td a:hover { color:var(--accent); }
+  .num { text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .mult { font-weight:700; white-space:nowrap; }
+  .badge { display:inline-block; background:var(--good); color:#08130d;
+    font-size:11px; font-weight:700; border-radius:5px; padding:1px 6px; margin-left:6px; }
+  .cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:10px; }
+  .card { background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:12px; }
+  .card .name { font-weight:600; }
+  .card .big { font-size:22px; font-weight:700; margin:4px 0 2px;
+    font-variant-numeric:tabular-nums; }
+  .card .sub { color:var(--ink2); font-size:12.5px; }
+  .muted { color:var(--ink3); font-size:12.5px; }
+  form.run { display:grid; gap:10px; background:var(--surface); border:1px solid var(--line);
+    border-radius:10px; padding:14px; max-width:520px; }
+  form.run label { font-size:12.5px; color:var(--ink2); display:grid; gap:4px; }
+  form.run input, form.run select { background:var(--bg); border:1px solid var(--line);
+    color:var(--ink); border-radius:7px; padding:9px 10px; font-size:15px; width:100%; }
+  form.run button { background:var(--accent); border:none; color:#081420; font-weight:700;
+    border-radius:8px; padding:11px; font-size:15px; cursor:pointer; }
+  form.run button:disabled { opacity:.5; }
+  #runstatus { font-size:13.5px; color:var(--ink2); min-height:20px; }
+  details { margin-top:10px; color:var(--ink2); font-size:13px; }
+  a.plain { color:var(--accent); }
+  .tab { display:none; } .tab.on { display:block; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header><h1>TubeIQ</h1><span id="updated">loading…</span></header>
+  <nav id="tabs">
+    <button data-t="outliers" class="on">Outliers</button>
+    <button data-t="keywords">Keywords</button>
+    <button data-t="competitors">Competitors</button>
+    <button data-t="run">Run</button>
+  </nav>
+
+  <div id="outliers" class="tab on"></div>
+  <div id="keywords" class="tab"></div>
+  <div id="competitors" class="tab"></div>
+
+  <div id="run" class="tab">
+    <form class="run" onsubmit="return runQuery(event)">
+      <label>Command
+        <select id="q-cmd">
+          <option value="outliers">outliers — proven angles in a niche</option>
+          <option value="keywords">keywords — demand vs competition</option>
+          <option value="search">search — top videos</option>
+          <option value="suggest">suggest — raw keyword ideas</option>
+          <option value="channel">channel — audit a @handle</option>
+          <option value="title">title — score titles (separate with |)</option>
+        </select>
+      </label>
+      <label>Query
+        <input id="q-query" placeholder='e.g. cortisol, @hubermanlab, or "Title A | Title B"' required>
+      </label>
+      <label>Period (outliers / search)
+        <select id="q-period">
+          <option>month</option><option>week</option><option>year</option><option>all</option>
+        </select>
+      </label>
+      <label>GitHub token (fine-grained, Actions read/write on this repo — stored only in this browser)
+        <input id="q-pat" type="password" placeholder="github_pat_…">
+      </label>
+      <button id="q-go">Run in cloud</button>
+      <div id="runstatus"></div>
+    </form>
+    <details>
+      <summary>No token? Run it from GitHub instead</summary>
+      Open <a class="plain" id="ghlink" target="_blank" rel="noopener">Actions → query → Run workflow</a>,
+      fill in command + query, then come back — the result appears below when done
+      (about 2–4 min).<br><br>
+      To make a token: GitHub → Settings → Developer settings → Fine-grained tokens →
+      generate one scoped to only the <b>tubeiq</b> repo with <b>Actions: read &amp; write</b>
+      and <b>Contents: read</b>. Paste it above once per device.
+    </details>
+    <h2>Latest result</h2>
+    <div id="ondemand" class="muted">none yet</div>
+  </div>
+</div>
+
+<script>
+const REPO = "skyscwleong13-hue/tubeiq";
+document.getElementById("ghlink").href =
+  `https://github.com/${REPO}/actions/workflows/query.yml`;
+document.getElementById("q-pat").value = localStorage.getItem("tubeiq_pat") || "";
+
+// ---------------- tabs
+document.getElementById("tabs").addEventListener("click", e => {
+  if (!e.target.dataset.t) return;
+  document.querySelectorAll("nav button").forEach(b => b.classList.toggle("on", b === e.target));
+  document.querySelectorAll(".tab").forEach(d =>
+    d.classList.toggle("on", d.id === e.target.dataset.t));
+});
+
+// ---------------- formatting
+const fmtC = n => n == null ? "–" :
+  n >= 1e9 ? (n/1e9).toFixed(1)+"B" : n >= 1e6 ? (n/1e6).toFixed(1)+"M" :
+  n >= 1e3 ? (n/1e3).toFixed(1)+"K" : String(n);
+const fmtAge = d => d == null ? "–" :
+  d >= 365 ? (d/365).toFixed(1)+"y" : d >= 30.4 ? Math.round(d/30.4)+"mo" :
+  d >= 7 ? Math.round(d/7)+"w" : Math.round(d)+"d";
+const ago = ts => { const s = Date.now()/1000 - ts;
+  return s < 3600 ? Math.round(s/60)+"m ago" : s < 86400 ? Math.round(s/3600)+"h ago"
+  : Math.round(s/86400)+"d ago"; };
+const esc = s => (s ?? "").toString().replace(/[&<>"]/g,
+  c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const vlink = (id, txt) =>
+  `<a href="https://www.youtube.com/watch?v=${esc(id)}" target="_blank" rel="noopener">${esc(txt)}</a>`;
+
+function tbl(headers, rows) {
+  return `<div class="tablewrap"><table><thead><tr>` +
+    headers.map(h => `<th>${h}</th>`).join("") +
+    `</tr></thead><tbody>` +
+    rows.map(r => `<tr>${r.map(c => `<td ${c[1]||""}>${c[0]}</td>`).join("")}</tr>`).join("") +
+    `</tbody></table></div>`;
+}
+
+// ---------------- section renderers
+function renderOutliers(list) {
+  if (!list?.length) return `<div class="muted">no results</div>`;
+  return tbl(["mult","title","channel","views","ch median","age"],
+    list.map(v => [
+      [`${esc(v.multiplier)}x`, 'class="mult"'],
+      [vlink(v.videoId, v.title)],
+      [esc(v.channel)],
+      [fmtC(v.views), 'class="num"'],
+      [fmtC(v.channel_median), 'class="num"'],
+      [fmtAge(v.age_days), 'class="num"']]));
+}
+function renderKeywords(list) {
+  if (!list?.length) return `<div class="muted">no results</div>`;
+  return tbl(["keyword","score","demand","compet","med views","top age","weak"],
+    list.map(k => [
+      [esc(k.keyword)],
+      [`<b>${esc(k.overall)}</b>`, 'class="num"'],
+      [esc(k.demand), 'class="num"'],
+      [esc(k.competition), 'class="num"'],
+      [fmtC(k.median_views), 'class="num"'],
+      [fmtAge(k.median_age_days), 'class="num"'],
+      [esc(k.weak_spots), 'class="num"']]));
+}
+function renderSearch(list) {
+  if (!list?.length) return `<div class="muted">no results</div>`;
+  return tbl(["title","channel","views","age","views/day"],
+    list.map(v => [
+      [vlink(v.videoId, v.title)],
+      [esc(v.channel)],
+      [fmtC(v.views), 'class="num"'],
+      [fmtAge(v.age_days), 'class="num"'],
+      [fmtC(v.views_per_day), 'class="num"']]));
+}
+function renderCompetitors(list) {
+  if (!list?.length) return `<div class="muted">nothing tracked</div>`;
+  return `<div class="cards">` + list.map(c => `
+    <div class="card">
+      <div class="name">${esc(c.title || c.ref)}
+        ${c.new_upload ? '<span class="badge">NEW UPLOAD</span>' : ""}</div>
+      <div class="big">${fmtC(c.subs)} <span class="sub">subs${
+        c.subs_delta ? ` (${c.subs_delta > 0 ? "+" : ""}${fmtC(c.subs_delta)})` : ""}</span></div>
+      <div class="sub">median ${fmtC(c.median_views)} views</div>
+      <div class="sub" style="margin-top:6px">${
+        c.latest_video_id ? vlink(c.latest_video_id, c.latest_video) : ""} ${
+        c.latest_age_days != null ? `· ${fmtAge(c.latest_age_days)}` : ""}</div>
+    </div>`).join("") + `</div>`;
+}
+function renderTitles(list) {
+  return list.map(r => `
+    <div class="card" style="margin-bottom:10px">
+      <div class="name"><b>${esc(r.score)}/100</b> — ${esc(r.title)}</div>
+      <div class="sub">${r.hits.map(h => "+ " + esc(h)).join("<br>")}</div>
+      <div class="sub" style="color:#c98a3d">${r.fixes.map(f => "− " + esc(f)).join("<br>")}</div>
+    </div>`).join("");
+}
+function renderChannel(d) {
+  const m = d.meta || {};
+  return `<div class="card" style="margin-bottom:10px">
+      <div class="name">${esc(m.title)}</div>
+      <div class="big">${fmtC(m.subs)} <span class="sub">subs</span></div>
+      <div class="sub">median ${fmtC(d.median_views)} · ${esc(d.uploads_per_week ?? "?")}/wk ·
+        ${fmtC(m.videoCount)} videos</div>
+    </div>` +
+    tbl(["mult","title","views","age"], (d.videos || []).map(v => [
+      [v.multiplier != null ? esc(v.multiplier)+"x" : "", 'class="mult"'],
+      [vlink(v.videoId, v.title)],
+      [fmtC(v.views), 'class="num"'],
+      [fmtAge(v.age_days), 'class="num"']]));
+}
+function renderSuggest(list) {
+  return tbl(["keyword","demand weight"], list.map(s => [
+    [esc(s.keyword)], [esc(s.weight), 'class="num"']]));
+}
+function renderOndemand(o) {
+  const head = `<div class="muted" style="margin-bottom:8px">
+    ${esc(o.command)}: <b style="color:var(--ink)">${esc(o.query)}</b>
+    · ${esc(o.period)} · ${ago(o.generated)}</div>`;
+  const r = o.results;
+  const body =
+    o.command === "outliers" ? renderOutliers(r) :
+    o.command === "keywords" ? renderKeywords(r) :
+    o.command === "search"   ? renderSearch(r) :
+    o.command === "title"    ? renderTitles(r) :
+    o.command === "channel"  ? renderChannel(r) :
+    o.command === "suggest"  ? renderSuggest(r) :
+    `<pre>${esc(JSON.stringify(r, null, 2))}</pre>`;
+  return head + body;
+}
+
+// ---------------- load data
+async function getJSON(path) {
+  const res = await fetch(`${path}?t=${Date.now()}`, {cache: "no-store"});
+  if (!res.ok) throw new Error(res.status);
+  return res.json();
+}
+async function loadDashboard() {
+  try {
+    const d = await getJSON("data/dashboard.json");
+    document.getElementById("updated").textContent = "updated " + ago(d.generated);
+    document.getElementById("outliers").innerHTML =
+      Object.entries(d.niches).map(([n, list]) =>
+        `<h2>${esc(n)}</h2>` + renderOutliers(list)).join("") ||
+      `<div class="muted">no niches configured</div>`;
+    document.getElementById("keywords").innerHTML =
+      Object.entries(d.keywords).map(([s, list]) =>
+        `<h2>${esc(s)}</h2>` + renderKeywords(list)).join("") ||
+      `<div class="muted">no seeds configured</div>`;
+    document.getElementById("competitors").innerHTML = renderCompetitors(d.competitors);
+  } catch (e) {
+    document.getElementById("updated").textContent =
+      "no data yet — first daily run pending";
+  }
+  try {
+    const o = await getJSON("data/ondemand.json");
+    document.getElementById("ondemand").innerHTML = renderOndemand(o);
+    return o.generated;
+  } catch (e) { return 0; }
+}
+let lastOndemand = 0;
+loadDashboard().then(ts => lastOndemand = ts);
+
+// ---------------- run a cloud query
+async function runQuery(ev) {
+  ev.preventDefault();
+  const pat = document.getElementById("q-pat").value.trim();
+  const status = document.getElementById("runstatus");
+  const btn = document.getElementById("q-go");
+  if (!pat) { status.textContent =
+    "No token — use the GitHub link below instead, or paste a token once."; return false; }
+  localStorage.setItem("tubeiq_pat", pat);
+  const inputs = {
+    command: document.getElementById("q-cmd").value,
+    query: document.getElementById("q-query").value,
+    period: document.getElementById("q-period").value,
+  };
+  btn.disabled = true;
+  status.textContent = "dispatching…";
+  try {
+    const res = await fetch(
+      `https://api.github.com/repos/${REPO}/actions/workflows/query.yml/dispatches`,
+      { method: "POST",
+        headers: { Authorization: `Bearer ${pat}`,
+                   Accept: "application/vnd.github+json" },
+        body: JSON.stringify({ ref: "main", inputs }) });
+    if (res.status !== 204) throw new Error(`GitHub said ${res.status}`);
+  } catch (e) {
+    status.textContent = "dispatch failed: " + e.message;
+    btn.disabled = false;
+    return false;
+  }
+  status.textContent = "running in cloud (usually 1–3 min)…";
+  const t0 = Date.now();
+  const poll = setInterval(async () => {
+    if (Date.now() - t0 > 6 * 60_000) {
+      clearInterval(poll);
+      status.textContent = "timed out — check the Actions page.";
+      btn.disabled = false;
+      return;
+    }
+    try {
+      const o = await getJSON("data/ondemand.json");
+      if (o.generated > lastOndemand) {
+        clearInterval(poll);
+        lastOndemand = o.generated;
+        document.getElementById("ondemand").innerHTML = renderOndemand(o);
+        status.textContent = "done.";
+        btn.disabled = false;
+      } else {
+        status.textContent =
+          `running… ${Math.round((Date.now() - t0) / 1000)}s (result deploys ~1 min after the run)`;
+      }
+    } catch (e) { /* pages not deployed yet */ }
+  }, 15_000);
+  return false;
+}
+</script>
+</body>
+</html>

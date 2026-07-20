@@ -1,0 +1,33 @@
+name: daily
+on:
+  schedule:
+    - cron: "0 22 * * *"   # 22:00 UTC = 06:00 MYT
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: data
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install requests -q
+      - run: python runner.py
+      - name: commit data
+        run: |
+          git config user.name "tubeiq-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add docs/data
+          git diff --cached --quiet && exit 0
+          git commit -m "data: daily refresh"
+          git pull --rebase origin main
+          git push
