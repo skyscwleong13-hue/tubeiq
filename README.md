@@ -1,5 +1,23 @@
 # tubeiq — local vidIQ replacement
 
+**Web dashboard (any device): https://skyscwleong13-hue.github.io/tubeiq/**
+
+The same engine also runs in the cloud, free, on GitHub Actions:
+
+- **Daily refresh** (06:00 MYT) — outliers for each niche, keyword scores for each
+  seed, competitor snapshots with deltas → shown on the dashboard. Edit
+  [`config.json`](config.json) to change niches/seeds/tracked channels.
+- **On-demand queries from any device** — dashboard → *Run* tab. Two ways:
+  1. Paste a fine-grained GitHub token once per device (repo `tubeiq` only,
+     permissions *Actions: read & write* + *Contents: read*) and hit Run.
+  2. No token: GitHub → Actions → *query* → *Run workflow* (works fine on phone).
+  Results land back on the dashboard in ~2–4 min (Actions run + Pages deploy).
+- Cloud limitation: the `video` command's player endpoint is bot-checked from
+  datacenter IPs, so it's local-CLI only. Everything else passes from CI.
+
+Cloud files: `runner.py` (daily), `cloud_query.py` (on-demand),
+`.github/workflows/daily.yml` + `query.yml`, `docs/` (the dashboard).
+
 No API key, no account, no subscription. Talks to the same internal endpoints
 the youtube.com web app uses (`youtubei/v1/*`) plus Google's free autocomplete
 endpoint. Read-only public data. Lives next to the editor as another
